@@ -82,35 +82,39 @@ export function loadOpenRpcDocumentsSync(root = path.resolve(process.cwd(), 'sch
   });
 }
 
-export function mergeMethods(documents: OpenRpcDocument[]): OpenRpcMethod[] {
-  const merged = new Map<string, OpenRpcMethod>();
+/** Preserve overloaded method definitions instead of merging different auth/schema variants. */
+export function expandMethods(documents: OpenRpcDocument[]): OpenRpcMethod[] {
+  const output: OpenRpcMethod[] = [];
+  const fingerprints = new Set<string>();
   for (const document of documents) {
     for (const method of document.methods) {
-      const current = merged.get(method.name);
-      if (!current) {
-        merged.set(method.name, { ...method, params: [...(method.params ?? [])] });
-        continue;
-      }
-      const params = new Map<string, OpenRpcParam>();
-      for (const param of [...(current.params ?? []), ...(method.params ?? [])]) {
-        const existing = params.get(param.name);
-        if (!existing) params.set(param.name, { ...param });
-        else if (JSON.stringify(existing.schema) !== JSON.stringify(param.schema)) {
-          params.set(param.name, { ...existing, description: existing.description ?? param.description, required: false, schema: undefined });
-        }
-      }
-      current.params = [...params.values()];
-      current.description = current.description ?? method.description;
-      current.auth_type = [...new Set([...(current.auth_type ?? []), ...(method.auth_type ?? [])])];
-      current.requires_perm = [...new Set([...(current.requires_perm ?? []), ...(method.requires_perm ?? [])])];
-      current.result = current.result ?? method.result;
+      const fingerprint = JSON.stringify({
+        name: method.name,
+        params: method.params ?? [],
+        auth_type: method.auth_type ?? [],
+        requires_perm: method.requires_perm ?? [],
+        result: method.result ?? null,
+        description: method.description ?? ''
+      });
+      if (fingerprints.has(fingerprint)) continue;
+      fingerprints.add(fingerprint);
+      output.push({ ...method, params: [...(method.params ?? [])] });
     }
   }
-  return [...merged.values()].sort((a, b) => a.name.localeCompare(b.name));
+  return output;
 }
 
 export function sanitizeToolName(method: string): string {
   return `ibsng_rpc_${method.replace(/[^A-Za-z0-9_-]/g, '_')}`;
+}
+
+export function methodVariantSuffix(method: OpenRpcMethod, index: number): string {
+  const auth = method.auth_type?.length ? method.auth_type.join('_').toLowerCase() : 'default';
+  const perm = method.requires_perm?.length
+    ? method.requires_perm.join('_').toLowerCase().replace(/[^a-z0-9_]+/g, '_')
+    : '';
+  const raw = `${auth}${perm ? `_${perm}` : ''}`.replace(/_+/g, '_').replace(/^_|_$/g, '');
+  return raw || `variant_${index}`;
 }
 
 export function methodDescription(method: OpenRpcMethod): string {
