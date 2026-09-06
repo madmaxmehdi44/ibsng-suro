@@ -45,7 +45,7 @@ const schemaToZod = (schema?: Record<string, unknown>): z.ZodTypeAny => {
   if (type === 'object') {
     const properties = schema.properties;
     if (properties && typeof properties === 'object' && Object.keys(properties as Record<string, unknown>).length > 0) {
-      const shape: z.ZodRawShape = {};
+      const shape: Record<string, z.ZodTypeAny> = {};
       for (const [key, value] of Object.entries(properties as Record<string, unknown>)) {
         shape[key] = schemaToZod(value && typeof value === 'object' ? value as Record<string, unknown> : undefined);
       }
@@ -56,8 +56,8 @@ const schemaToZod = (schema?: Record<string, unknown>): z.ZodTypeAny => {
   return z.unknown();
 };
 
-export function paramsToZod(method: OpenRpcMethod): z.ZodObject<z.ZodRawShape> {
-  const shape: z.ZodRawShape = {};
+export function paramsToZod(method: OpenRpcMethod): z.ZodObject<Record<string, z.ZodTypeAny>> {
+  const shape: Record<string, z.ZodTypeAny> = {};
   for (const param of method.params ?? []) {
     let schema = schemaToZod(param.schema);
     if (param.description?.trim()) schema = schema.describe(param.description.trim());
