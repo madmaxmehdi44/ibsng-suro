@@ -28,17 +28,21 @@ export function loadConfig(): Config {
     throw new Error('Set IBS_AUTH_PASS or IBS_AUTH_SESSION');
   }
 
-  return {
+  const config: Config = {
     ibsngUrl: process.env.IBSNG_URL ?? 'http://127.0.0.1:1237',
     authType,
     authName: process.env.IBS_AUTH_NAME ?? 'system',
-    authPass,
     authRemoteAddr: process.env.IBS_ADDR ?? '127.0.0.1',
-    authSession,
     mcpHost: process.env.MCP_HOST ?? '127.0.0.1',
     mcpPort: Number(process.env.MCP_PORT ?? '3000'),
-    mcpAuthToken: process.env.MCP_AUTH_TOKEN || undefined,
     enableRawCall: process.env.IBSNG_ENABLE_RAW_CALL === 'true',
     requestTimeoutMs: Number(process.env.IBSNG_TIMEOUT_MS ?? '15000')
   };
+
+  if (authPass !== undefined) config.authPass = authPass;
+  if (authSession !== undefined) config.authSession = authSession;
+  const mcpAuthToken = process.env.MCP_AUTH_TOKEN || undefined;
+  if (mcpAuthToken !== undefined) config.mcpAuthToken = mcpAuthToken;
+
+  return config;
 }
