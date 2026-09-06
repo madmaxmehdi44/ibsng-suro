@@ -25,9 +25,10 @@ function registerGeneratedTools(server: McpServer, client: IBSngClient): { metho
   const toolNames: string[] = [];
   methods.forEach((method, index) => {
     if (LOGIN_METHODS.has(method.name)) return;
-    let toolName = toolNameForMethod(method, index, counts.get(method.name) ?? 1);
+    const base = toolNameForMethod(method, index, counts.get(method.name) ?? 1);
+    let toolName = base;
     let suffix = 2;
-    while (used.has(toolName)) toolName = `${toolNameForMethod(method, index, counts.get(method.name) ?? 1)}_${suffix++}`;
+    while (used.has(toolName)) toolName = `${base}_${suffix++}`;
     used.add(toolName);
     toolNames.push(toolName);
     server.registerTool(
@@ -91,7 +92,7 @@ function registerSkillTools(server: McpServer, client: IBSngClient): void {
 export function createServer(): McpServer {
   const config = loadConfig();
   const server = new McpServer(
-    { name: 'ibsng-suro', version: '0.2.2' },
+    { name: 'ibsng-suro', version: '0.2.3' },
     { capabilities: { tools: {}, resources: {}, prompts: {} } }
   );
   const client = new IBSngClient();
@@ -115,11 +116,16 @@ export function createServer(): McpServer {
     'ibsng_health',
     {
       title: 'IBSng health check',
-      description: 'Authenticate against the configured IBSng E JSON-RPC endpoint using server-side credentials.',
+      description: 'Validate the configured IBSng E credentials or existing session without exposing credentials to the caller.',
       inputSchema: z.object({})
     },
     async () => {
       try {
+        if (config.authSession) {
+          await client.call({ method: 'user.getUserInfo', params: {} });
+          return { content: [{ type: 'text', text: json({ ok: true, mode: 'auth_session' }) }] };
+        }
+        if (!config.authPass) throw new Error('IBS_AUTH_PASS or IBS_AUTH_SESSION is required');
         const result = await client.call({ method: 'login.login', params: {
           login_auth_type: config.authType,
           login_auth_name: config.authName,
@@ -127,7 +133,7 @@ export function createServer(): McpServer {
           create_session: false,
           auth_remoteaddr: config.authRemoteAddr
         }});
-        return { content: [{ type: 'text', text: json({ ok: true, result }) }] };
+        return { content: [{ type: 'text', text: json({ ok: true, mode: 'credentials', result }) }] };
       } catch (error) {
         return { isError: true, content: [{ type: 'text', text: json({ ok: false, error: error instanceof Error ? error.message : String(error) }) }] };
       }
