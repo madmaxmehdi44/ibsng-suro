@@ -7,7 +7,7 @@ import { loadConfig } from './config.js';
 
 async function serveHttp(): Promise<void> {
   const config = loadConfig();
-  const handler = createMcpHandler(() => createServer(), { legacy: 'stateless' });
+  const handler = createMcpHandler(() => createServer());
   const nodeHandler = toNodeHandler(handler, { onerror: (error) => console.error('[mcp:http]', error) });
 
   const server = http.createServer(async (req, res) => {
@@ -23,7 +23,7 @@ async function serveHttp(): Promise<void> {
       return;
     }
 
-    await nodeHandler(req, res);
+    await nodeHandler(req as Parameters<typeof nodeHandler>[0], res as Parameters<typeof nodeHandler>[1]);
   });
 
   server.listen(config.mcpPort, config.mcpHost, () => {
@@ -42,7 +42,7 @@ const mode = process.argv[2] ?? 'stdio';
 if (mode === 'http') {
   void serveHttp();
 } else if (mode === 'stdio') {
-  void serveStdio(() => createServer(), { legacy: 'stateless' });
+  void serveStdio(() => createServer());
   console.error('IBSng E MCP running on stdio');
 } else {
   console.error('Usage: npm run dev -- [stdio|http]');
