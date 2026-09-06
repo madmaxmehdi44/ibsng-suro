@@ -1,6 +1,6 @@
 import process from 'node:process';
 
-export type AuthType = 'ADMIN' | 'NORMAL_USER' | 'VOIP_USER';
+export type AuthType = 'ADMIN' | 'NORMAL_USER' | 'VOIP_USER' | 'ANONYMOUS';
 
 export interface Config {
   ibsngUrl: string;
@@ -18,7 +18,7 @@ export interface Config {
 
 export function loadConfig(): Config {
   const authType = (process.env.IBS_AUTH_TYPE ?? 'ADMIN') as AuthType;
-  if (!['ADMIN', 'NORMAL_USER', 'VOIP_USER'].includes(authType)) {
+  if (!['ADMIN', 'NORMAL_USER', 'VOIP_USER', 'ANONYMOUS'].includes(authType)) {
     throw new Error(`Invalid IBS_AUTH_TYPE=${authType}`);
   }
 
