@@ -8,12 +8,14 @@ import { loadOpenRpcDocumentsSync, mergeMethods, methodDescription, paramsToZod,
 
 const json = (value: unknown): string => JSON.stringify(value, null, 2);
 const schemasRoot = path.resolve(process.cwd(), 'schemas/ibsng-e');
+const LOGIN_METHODS = new Set(['login.login', 'login.webLogin']);
 
-function registerGeneratedTools(server: McpServer, client: IBSngClient): { methodCount: number; modules: string[] } {
+function registerGeneratedTools(server: McpServer, client: IBSngClient): { methodCount: number; exposedMethodCount: number; modules: string[] } {
   const documents = loadOpenRpcDocumentsSync(schemasRoot);
   const methods = mergeMethods(documents);
   const used = new Set<string>();
   for (const method of methods) {
+    if (LOGIN_METHODS.has(method.name)) continue;
     const baseName = sanitizeToolName(method.name);
     let toolName = baseName;
     let n = 2;
@@ -32,7 +34,11 @@ function registerGeneratedTools(server: McpServer, client: IBSngClient): { metho
       }
     );
   }
-  return { methodCount: methods.length, modules: documents.map((document) => String(document.info?.title ?? 'unknown')) };
+  return {
+    methodCount: methods.length,
+    exposedMethodCount: methods.filter((method) => !LOGIN_METHODS.has(method.name)).length,
+    modules: documents.map((document) => String(document.info?.title ?? 'unknown'))
+  };
 }
 
 function registerSchemaResources(server: McpServer): void {
@@ -56,6 +62,7 @@ export function createServer(): McpServer {
   );
   const client = new IBSngClient();
   const registry = registerGeneratedTools(server, client);
+  registerSchemaResources(server);
 
   if (config.enableRawCall) {
     server.registerTool(
@@ -63,10 +70,7 @@ export function createServer(): McpServer {
       {
         title: 'Raw IBSng JSON-RPC call',
         description: 'Call a documented IBSng Branch E JSON-RPC method directly. Authentication is injected server-side.',
-        inputSchema: z.object({
-          method: z.string().min(1),
-          params: z.record(z.string(), z.unknown()).default({})
-        })
+        inputSchema: z.object({ method: z.string().min(1), params: z.record(z.string(), z.unknown()).default({}) })
       },
       async ({ method, params }) => ({ content: [{ type: 'text', text: json(await client.call({ method, params })) }] })
     );
@@ -76,15 +80,26 @@ export function createServer(): McpServer {
     'ibsng_health',
     {
       title: 'IBSng health check',
-      description: 'Verify connectivity to the configured IBSng E JSON-RPC endpoint by calling the documented login.login operation.',
-      inputSchema: z.object({ auth_type: z.enum(['ADMIN', 'NORMAL_USER', 'VOIP_USER']).optional() })
+      description: 'Authenticate against the configured IBSng E JSON-RPC endpoint using the server-side credentials.',
+      inputSchema: z.object({})
     },
-    async ({ auth_type }) => {
+    async () => {
       try {
-        const type = auth_type ?? config.authType;
-        if (config.authSession) return { content: [{ type: 'text', text: json(await client.call({ method: 'login.login', params: { login_auth_type: type, login_auth_name: config.authName, login_auth_pass: '***', create_session: false } })) }] };
+        if (config.authSession) {
+          await client.call({ method: 'user.getUserInfo', params: {} });
+          return { content: [{ type: 'text', text: json({ ok: true, mode: 'auth_session' }) }] };
+        }
         if (!config.authPass) throw new Error('IBS_AUTH_PASS or IBS_AUTH_SESSION is required');
-        const result = await client.call({ method: 'login.login', params: { login_auth_type: type, login_auth_name: config.authName, login_auth_pass: config.authPass, create_session: false, auth_remoteaddr: config.authRemoteAddr } });
+        const result = await client.call({
+          method: 'login.login',
+          params: {
+            login_auth_type: config.authType,
+            login_auth_name: config.authName,
+            login_auth_pass: config.authPass,
+            create_session: false,
+            auth_remoteaddr: config.authRemoteAddr
+          }
+        });
         return { content: [{ type: 'text', text: json({ ok: true, result }) }] };
       } catch (error) {
         return { isError: true, content: [{ type: 'text', text: json({ ok: false, error: error instanceof Error ? error.message : String(error) }) }] };
@@ -100,7 +115,15 @@ export function createServer(): McpServer {
       contents: [{
         uri: 'ibsng://e/capabilities',
         mimeType: 'application/json',
-        text: JSON.stringify({ version: 'E', transport: 'JSON-RPC', generated_tools: registry.methodCount, modules: registry.modules, raw_call: config.enableRawCall }, null, 2)
+        text: JSON.stringify({
+          version: 'E',
+          transport: 'JSON-RPC',
+          documented_methods: registry.methodCount,
+          exposed_methods: registry.exposedMethodCount,
+          excluded_methods: [...LOGIN_METHODS],
+          modules: registry.modules,
+          raw_call: config.enableRawCall
+        }, null, 2)
       }]
     })
   );
