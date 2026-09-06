@@ -23,7 +23,9 @@ async function serveHttp(): Promise<void> {
       return;
     }
 
-    await nodeHandler(req as Parameters<typeof nodeHandler>[0], res as Parameters<typeof nodeHandler>[1]);
+    // The MCP Node adapter's request type requires a concrete HTTP method;
+    // Node's IncomingMessage exposes it as optional in its typings.
+    await nodeHandler(req as unknown as Parameters<typeof nodeHandler>[0], res as Parameters<typeof nodeHandler>[1]);
   });
 
   server.listen(config.mcpPort, config.mcpHost, () => {
