@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import process from 'node:process';
 
 export type AuthType = 'ADMIN' | 'NORMAL_USER' | 'VOIP_USER' | 'ANONYMOUS';
@@ -25,7 +26,9 @@ export function loadConfig(): Config {
   const authSession = process.env.IBS_AUTH_SESSION || undefined;
   const authPass = process.env.IBS_AUTH_PASS || undefined;
   if (!authSession && !authPass) {
-    throw new Error('Set IBS_AUTH_PASS or IBS_AUTH_SESSION');
+    throw new Error(
+      'Missing IBSng authentication. Set IBS_AUTH_SESSION or IBS_AUTH_PASS in .env/environment.'
+    );
   }
 
   const config: Config = {
