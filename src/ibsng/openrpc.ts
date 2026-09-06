@@ -56,7 +56,7 @@ const schemaToZod = (schema?: Record<string, unknown>): z.ZodTypeAny => {
   return z.unknown();
 };
 
-export function paramsToZod(method: OpenRpcMethod): z.ZodObject<Record<string, z.ZodTypeAny>> {
+export function paramsToZod(method: OpenRpcMethod): z.ZodObject<any> {
   const shape: Record<string, z.ZodTypeAny> = {};
   for (const param of method.params ?? []) {
     let schema = schemaToZod(param.schema);
