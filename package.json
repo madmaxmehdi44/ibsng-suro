@@ -1,0 +1,26 @@
+{
+  "name": "ibsng-suro",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "IBSng Branch E MCP server with tools, skills, resources and JSON-RPC integration.",
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "dev": "tsx src/index.ts",
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/index.js",
+    "check": "tsc -p tsconfig.json --noEmit",
+    "sync:docs": "tsx scripts/sync-ibsng-e.ts",
+    "inspector": "npx @modelcontextprotocol/inspector tsx src/index.ts"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/node": "2.0.0",
+    "@modelcontextprotocol/server": "2.0.0",
+    "zod": "4.5.4"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.1",
+    "tsx": "^4.20.5",
+    "typescript": "^6.0.0"
+  }
+}
