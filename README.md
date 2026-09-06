@@ -73,6 +73,8 @@ ibsng_rpc_user_getUserInfo
 ibsng_rpc_balance_getBalanceInfo
 ```
 
+When the E documentation contains multiple variants of the same method, the generated tool name includes an auth/permission suffix so distinct schemas are not merged incorrectly.
+
 Authentication methods are intentionally not exposed as generic tools so credentials are never delegated to the higher-level AI. `ibsng_health` validates connectivity with server-side credentials instead.
 
 Every Branch E JSON document is also available as an MCP resource under:
@@ -87,14 +89,11 @@ The optional `ibsng_raw_call` tool is an administrative escape hatch and is disa
 
 ## Skills
 
-Reusable workflow definitions live under `skills/` and are intentionally higher-level than individual IBSng API methods:
+Reusable workflow definitions live under `skills/`. The current implementation includes:
 
 - `customer-diagnosis`
-- `account-review`
-- `session-diagnosis`
-- `billing-review`
 
-They are read-first workflows. Mutating tools should only be used when the operator explicitly requests the mutation.
+Additional domain workflows such as account review, session diagnosis and billing review can be added on top of the same generated tool registry without changing the IBSng transport layer.
 
 ## Development
 
