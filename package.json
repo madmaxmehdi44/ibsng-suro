@@ -1,6 +1,6 @@
 {
   "name": "ibsng-suro",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "private": true,
   "type": "module",
   "description": "IBSng Branch E MCP server with generated OpenRPC tools, skills and JSON-RPC integration.",
@@ -8,7 +8,8 @@
   "scripts": {
     "dev": "npm run sync:docs && tsx src/index.ts",
     "build": "npm run sync:docs && tsc -p tsconfig.json",
-    "start": "npm run sync:docs && node dist/index.js",
+    "start": "npm run build && node dist/index.js",
+    "start:http": "npm run build && node dist/server.js http",
     "check": "npm run sync:docs && tsc -p tsconfig.json --noEmit",
     "sync:docs": "tsx scripts/sync-ibsng-e.ts",
     "inspector": "npm run sync:docs && npx @modelcontextprotocol/inspector tsx src/index.ts"
